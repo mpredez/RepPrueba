@@ -1,2 +1,56 @@
-Hola gordo trolo!
-Hola gordo Puto!
+USE [EngageRCivil]
+GO
+/****** Object:  StoredProcedure [EngageRCivil].[AC_GRD_DET_JOB]    Script Date: 22/01/2018 17:01:15 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- 	=========================================================
+--	Autor: lizzo
+--	Fecha: 20160719
+--	Descripción: Grilla. Detalle de Solicitud (JOB)
+-- 	=========================================================
+ALTER PROCEDURE [EngageRCivil].[AC_GRD_DET_JOB]
+(	@P_PKEY_JOB		VARCHAR(100),
+	@P_CALL_TYPE	VARCHAR(20)		)
+	
+AS
+BEGIN
+
+	DECLARE @V_PKEY_ESTRUCTURA VARCHAR(100)
+
+	SET @V_PKEY_ESTRUCTURA = CASE @P_CALL_TYPE 
+								WHEN 'AC0101' THEN '0000000130_7'
+								WHEN 'AC0102' THEN '0000005107_7'
+								WHEN 'AC0103' THEN '0000005276_7'
+								WHEN 'AC0104' THEN '0000007589_7'
+								ELSE 'ERROR' END	
+	
+	SELECT 	'<img src="./../fotos/empresas/gcba/ver.gif" style="cursor:pointer" title="Ver detalles"
+				onClick="almacenarSeleccion(''GESTION_ITEM_SELEC'',''' + JOB.PKEY + ''');SaltoaEstructura('''+@V_PKEY_ESTRUCTURA+''')"/>'
+																				AS '<font color  = "#ebeadb">1</font>',
+			JOB.JOB_SEQ															AS '<b>NRO</b>',  
+			'<font color = "'+CT.ATTR1+'"><b>'+CT.CAT_DATA_DESC+'</b></font>'	AS '<B>TIPO PARTIDA</B>',
+			CT_ORIGEN.CAT_DATA_DESC	
+				+ CASE WHEN TMT.SOLIC_EXTERIOR = 'SI' THEN + '-C' ELSE '' END
+				+ CASE WHEN TMT.SOLIC_ORIGEN = 'SUACI' THEN ' <a onClick="ejecutaSql(''AC_GRD_DET_SUACI'',''SP'','''');" style="cursor:pointer" title="Ver datos"><img src="./../fotos/empresas/gcba/web.png" width="18" height="18"></a>' ELSE '' END
+																				AS '<b>ORIGEN</b>',
+			JOB.JOB_START_DATE													AS '<b>FECHA INICIO</b>',
+			(CASE JOB.JOB_STATE_CODE 
+				WHEN 'OPENED' 
+				THEN 'Abierto' 
+				ELSE 'Cerrado' END)												AS '<B>ESTADO</B>',
+			JOB.JOB_STATE_DATE													AS '<b>FECHA DE ESTADO</b>',
+			USU.USER_NAME														AS '<b>USUARIO ANTERIOR</b>',
+			UNI.UNIT_DESCRIPTION												AS '<b>UNIDAD ANTERIOR</b>',
+			CASE WHEN JOB.JOB_PRIORITY = 'Urgente' 
+				THEN 'SI' ELSE 'NO' END											AS '<b>URGENTE</b>'
+	FROM	PHYSICAL_JOB AS JOB
+			INNER JOIN TMT_AC01 AS TMT		ON JOB.PKEY = TMT.PAR_KEY
+			LEFT JOIN CAT_DATA CT			ON TMT.SOLIC_TIPO_PARTIDA = CT.CAT_DATA_CODE AND CT.PAR_KEY = EngageRCivil.AC_PKEY_CAT_TYPE('TIPO_PARTIDA')
+			LEFT JOIN CAT_DATA CT_ORIGEN	ON TMT.SOLIC_ORIGEN = CT_ORIGEN.CAT_DATA_CODE AND CT_ORIGEN.PAR_KEY = EngageRCivil.AC_PKEY_CAT_TYPE('ORIGEN_PEDIDO')
+			LEFT JOIN VW_SYS_UNIDAD	UNI		ON JOB.PREV_GROUP_CODE = UNI.UNIT_CODE
+			LEFT JOIN VW_SYS_USUARIO USU	ON JOB.PREV_USER_ID = USU.USER_ID
+	WHERE   JOB.PKEY = @P_PKEY_JOB
+
+END
